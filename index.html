@@ -1,0 +1,214 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penda Health Information System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        form {
+            margin: 10px 0;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Penda Health Information System</h1>
+
+    <h2>Register a New Client</h2>
+    <form id="clientForm">
+        <input type="text" id="client_id" placeholder="Client ID" required>
+        <input type="text" id="name" placeholder="Name" required>
+        <input type="number" id="age" placeholder="Age" required>
+        <input type="text" id="gender" placeholder="Gender" required>
+        <button type="submit">Register Client</button>
+    </form>
+
+    <h2>Create a Health Program</h2>
+    <form id="programForm">
+        <input type="text" id="program_name" placeholder="Program Name" required>
+        <button type="submit">Create Program</button>
+    </form>
+
+    <h2>Enroll Client in a Program</h2>
+    <form id="enrollForm">
+        <input type="text" id="enroll_client_id" placeholder="Client ID" required>
+        <input type="text" id="enroll_program_name" placeholder="Program Name" required>
+        <button type="submit">Enroll</button>
+    </form>
+
+    <h2>View Client Profile</h2>
+    <form id="viewProfileForm">
+        <input type="text" id="view_client_id" placeholder="Client ID" required>
+        <button type="submit">View Profile</button>
+    </form>
+
+    <h2>Client Profile Data</h2>
+    <pre id="clientData"></pre>
+
+    <h2>Search for a Client</h2>
+    <form id="searchForm">
+        <input type="text" id="search_query" placeholder="Enter name or client ID" required>
+        <button type="submit">Search</button>
+    </form>
+
+    <h2>Search Results</h2>
+    <div id="searchResults"></div>
+
+    <script>
+        const baseURL = 'http://127.0.0.1:5000'; // Base URL for backend
+
+        // Reusable function to POST data
+        async function postData(endpoint, data) {
+            try {
+                const response = await fetch(`${baseURL}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Register Client
+        document.getElementById('clientForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const clientData = {
+                client_id: document.getElementById('client_id').value,
+                name: document.getElementById('name').value,
+                age: document.getElementById('age').value,
+                gender: document.getElementById('gender').value
+            };
+            postData('/clients', clientData);
+            this.reset();
+        });
+
+        // Create Program
+        document.getElementById('programForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const programData = {
+                program_name: document.getElementById('program_name').value
+            };
+            postData('/programs', programData);
+            this.reset();
+        });
+
+        // Enroll Client
+        document.getElementById('enrollForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const enrollData = {
+                client_id: document.getElementById('enroll_client_id').value,
+                program_name: document.getElementById('enroll_program_name').value
+            };
+            postData('/enroll', enrollData);
+            this.reset();
+        });
+
+        // View Client Profile
+        document.getElementById('viewProfileForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const clientId = document.getElementById('view_client_id').value;
+            fetch(`${baseURL}/clients/${clientId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('clientData').textContent = JSON.stringify(data, null, 2);
+                    document.getElementById('viewProfileForm').reset();
+                })
+                .catch(error => {
+                    alert('Error fetching client profile: ' + error.message);
+                });
+        });
+
+        // Search for Client
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = document.getElementById('search_query').value;
+            fetch(`${baseURL}/clients/search?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    displaySearchResults(data);
+                    document.getElementById('searchForm').reset();
+                })
+                .catch(error => {
+                    alert('Error searching client: ' + error.message);
+                });
+        });
+
+        // Display Search Results
+        function displaySearchResults(clients) {
+    const searchResultsDiv = document.getElementById('searchResults');
+
+    if (!Array.isArray(clients)) {
+        clients = [clients];
+    }
+
+    if (clients.length === 0) {
+        searchResultsDiv.innerHTML = "<p>No clients found.</p>";
+        return;
+    }
+
+    let table = `<table>
+        <thead>
+            <tr>
+                <th>Client ID</th>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Gender</th>
+                <th>Programs</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    clients.forEach(client => {
+        const clientId = client.client_id ?? "N/A";
+        const name = client.name ?? "N/A";
+        const age = client.age ?? "N/A";
+        const gender = client.gender ?? "N/A";
+        const programs = Array.isArray(client.programs) ? client.programs.join(", ") : "No programs enrolled";
+
+        table += `
+            <tr>
+                <td>${clientId}</td>
+                <td>${name}</td>
+                <td>${age}</td>
+                <td>${gender}</td>
+                <td>${programs}</td>
+            </tr>
+        `;
+    });
+
+    table += `</tbody></table>`;
+    searchResultsDiv.innerHTML = table;
+}
+
+    </script>
+</body>
+</html>
